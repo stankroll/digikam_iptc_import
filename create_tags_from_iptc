@@ -4,39 +4,48 @@ import os
 import pyexiv2
 import sqlite3 as sql
 
-# Does a tag exist:
-#   select tags.id, tags.pid, tags.name
-#     from tags
-#    where name = 'Tom'
-#      and pid = 24 -- 0=root (ie. no parent)
-#   ; 
+#
+# ===== get_tag_id function =====
+#
+def get_tag_id (tag_name, parent_tag_id):
+    "Query the tags table for the passed name and pid and return the id if found or 'None' if not found."
+    tag_cursor = con.cursor()
+    tag_cursor.execute("select tags.id " +
+                       "  from tags "     +
+                       " where name = :Name " +
+                       "   and pid  = :Pid", {"Name": tag_name, "Pid": parent_tag_id})
+    tag_id = tag_cursor.fetchone()
+
+    return tag_id
+
+#
+# ===== create_tags function =====
 #
 def create_tags(iptc_category):
     "Split the iptc category passed and return the id of the lowest level tag."
-    tag_cursor = con.cursor()
     print '   ', iptc_category
     taglist = iptc_category.split('.')
     parent_tag_id = 0
     for tag in taglist:
         print '       ', tag
-        tag_cursor.execute("select tags.id " +
-                           "  from tags "     +
-                           " where name = :Name " +
-                           "   and pid  = :Pid", {"Name": tag, "Pid": parent_tag_id})
-        tag_id = tag_cursor.fetchone()
+        tag_id = get_tag_id(tag, parent_tag_id)
         if tag_id == None:
             print "            digikam tag not found for:", tag
+            # tag_id = add_new_tag(tag, parent_tag_id)
         else:
             print "            digikam tag_id =", tag_id[0]
+        parent_tag_id = tag_id[0]
     return
 
+#
+# ===== Main program begins here =====
 con = sql.connect('/home/srkzm3/Pictures/digikam4.db')
 with con:
     cur = con.cursor()
     cur.execute("select images.id, albumroots.specificpath || albums.relativepath || '/' || images.name " + 
                 "  from images join albums on images.album = albums.id " + 
-                "              join albumroots on albums.albumroot = albumroots.id")
-#                "              join albumroots on albums.albumroot = albumroots.id LIMIT 20")
+                "              join albumroots on albums.albumroot = albumroots.id LIMIT 20")
+#                "              join albumroots on albums.albumroot = albumroots.id")
     while True:
       digikam_image = cur.fetchone()
       if digikam_image == None:
@@ -47,9 +56,9 @@ with con:
         imagedata.read()
         tag = imagedata.get('Iptc.Application2.SuppCategory')
         if tag == None:
-          print '    No IPTC imagedata found for', digikam_image[1]
+          print '    No IPTC metadata found for', digikam_image[1]
         else:
           for category in tag.value:
             create_tags(category)
       except IOError:
-        pass
+        print '    No IPTC metadata found for', digikam_image[1]
