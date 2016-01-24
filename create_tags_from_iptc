@@ -59,6 +59,7 @@ with con:
           print '    No IPTC metadata found for', digikam_image[1]
         else:
           for category in tag.value:
-            create_tags(category)
+            tag_id = create_tags(category)
+            # add_tag_to_image(digikam_image[1], tag_id)
       except IOError:
         print '    No IPTC metadata found for', digikam_image[1]
