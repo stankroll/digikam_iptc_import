@@ -25,11 +25,12 @@ def get_tag_id (tag_name, parent_tag_id):
 #
 def add_new_tag(tag_name, parent_tag_id):
     "Add a new row to the Tags table."
-    #pdb.set_trace()
+    pdb.set_trace()
     ins_tag_cur = con.cursor()
     ins_tag_cur.execute("insert into tags (pid, name) values(?, ?)", (parent_tag_id, tag_name))
     
-    return ins_tag_cur.lastrowid
+    # convert lastrowid to a list so it will be consistent with the output of get_tag_id
+    return [ins_tag_cur.lastrowid]
 
 #
 # ===== create_tags function =====
@@ -45,11 +46,12 @@ def create_tags(iptc_category):
         if tag_id == None:
             print "            digikam tag not found for:", tag_name
             tag_id = add_new_tag(tag_name, parent_tag_id)
-            parent_tag_id = tag_id
         else:
             print "            digikam tag_id =", tag_id[0]
-            parent_tag_id = tag_id[0]
-    return
+        parent_tag_id = tag_id[0]
+   
+    # retrun the last tag inserted/queried, ie. the lowest level tag.
+    return tag_id[0]
 
 #
 # ===== Main program begins here =====
@@ -73,7 +75,7 @@ with con:
           print '    No IPTC metadata found for', digikam_image[1]
         else:
           for category in tag.value:
-            tag_id = create_tags(category)
-            # add_tag_to_image(digikam_image[1], tag_id)
+            lowest_level_tag_id = create_tags(category)
+            #add_tag_to_image(digikam_image[0], lowest_level_tag_id)
       except IOError:
         print '    No IPTC metadata found for', digikam_image[1]
