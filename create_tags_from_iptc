@@ -25,7 +25,6 @@ def get_tag_id (tag_name, parent_tag_id):
 #
 def add_new_tag(tag_name, parent_tag_id):
     "Add a new row to the Tags table."
-    pdb.set_trace()
     ins_tag_cur = con.cursor()
     ins_tag_cur.execute("insert into tags (pid, name) values(?, ?)", (parent_tag_id, tag_name))
     
@@ -37,21 +36,35 @@ def add_new_tag(tag_name, parent_tag_id):
 #
 def create_tags(iptc_category):
     "Split the iptc category passed and return the id of the lowest level tag."
-    print '   ', iptc_category
+    #print '   ', iptc_category
     taglist = iptc_category.split('.')
     parent_tag_id = 0
     for tag_name in taglist:
-        print '       ', tag_name
+        #print '       ', tag_name
         tag_id = get_tag_id(tag_name, parent_tag_id)
         if tag_id == None:
-            print "            digikam tag not found for:", tag_name
+            #print "            digikam tag not found for:", tag_name
             tag_id = add_new_tag(tag_name, parent_tag_id)
-        else:
-            print "            digikam tag_id =", tag_id[0]
+        #else:
+            #print "            digikam tag_id =", tag_id[0]
         parent_tag_id = tag_id[0]
    
     # retrun the last tag inserted/queried, ie. the lowest level tag.
     return tag_id[0]
+
+#
+# ===== add_tag_to_image =====
+# 
+def add_tag_to_image(image_id, tag_id):
+    "Add a tag to an image"
+    ins_cur = con.cursor()
+    try:
+        ins_cur.execute("insert into imagetags (imageid, tagid) values(?, ?)", (image_id, tag_id))
+    except sql.IntegrityError as e:
+        if 'unique constraint' in e.args[0].lower():
+            print 'There is unique constraint violation on the imagetags table with imageid =', image_id, 'tag_id =', tag_id, 'continuing...'
+        else:
+            raise
 
 #
 # ===== Main program begins here =====
@@ -60,8 +73,8 @@ with con:
     cur = con.cursor()
     cur.execute("select images.id, albumroots.specificpath || albums.relativepath || '/' || images.name " + 
                 "  from images join albums on images.album = albums.id " + 
-                "              join albumroots on albums.albumroot = albumroots.id LIMIT 3")
-#                "              join albumroots on albums.albumroot = albumroots.id")
+                "              join albumroots on albums.albumroot = albumroots.id")
+#                "              join albumroots on albums.albumroot = albumroots.id LIMIT 3")
     while True:
       digikam_image = cur.fetchone()
       if digikam_image == None:
@@ -76,6 +89,6 @@ with con:
         else:
           for category in tag.value:
             lowest_level_tag_id = create_tags(category)
-            #add_tag_to_image(digikam_image[0], lowest_level_tag_id)
+            add_tag_to_image(digikam_image[0], lowest_level_tag_id)
       except IOError:
         print '    No IPTC metadata found for', digikam_image[1]
