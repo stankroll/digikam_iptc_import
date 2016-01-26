@@ -3,6 +3,8 @@
 import os
 import pyexiv2
 import sqlite3 as sql
+import pdb
+#pdb.set_trace()
 
 #
 # ===== get_tag_id function =====
@@ -19,6 +21,17 @@ def get_tag_id (tag_name, parent_tag_id):
     return tag_id
 
 #
+# ===== add_new_tag =====
+#
+def add_new_tag(tag_name, parent_tag_id):
+    "Add a new row to the Tags table."
+    #pdb.set_trace()
+    ins_tag_cur = con.cursor()
+    ins_tag_cur.execute("insert into tags (pid, name) values(?, ?)", (parent_tag_id, tag_name))
+    
+    return ins_tag_cur.lastrowid
+
+#
 # ===== create_tags function =====
 #
 def create_tags(iptc_category):
@@ -26,15 +39,16 @@ def create_tags(iptc_category):
     print '   ', iptc_category
     taglist = iptc_category.split('.')
     parent_tag_id = 0
-    for tag in taglist:
-        print '       ', tag
-        tag_id = get_tag_id(tag, parent_tag_id)
+    for tag_name in taglist:
+        print '       ', tag_name
+        tag_id = get_tag_id(tag_name, parent_tag_id)
         if tag_id == None:
-            print "            digikam tag not found for:", tag
-            # tag_id = add_new_tag(tag, parent_tag_id)
+            print "            digikam tag not found for:", tag_name
+            tag_id = add_new_tag(tag_name, parent_tag_id)
+            parent_tag_id = tag_id
         else:
             print "            digikam tag_id =", tag_id[0]
-        parent_tag_id = tag_id[0]
+            parent_tag_id = tag_id[0]
     return
 
 #
@@ -44,7 +58,7 @@ with con:
     cur = con.cursor()
     cur.execute("select images.id, albumroots.specificpath || albums.relativepath || '/' || images.name " + 
                 "  from images join albums on images.album = albums.id " + 
-                "              join albumroots on albums.albumroot = albumroots.id LIMIT 20")
+                "              join albumroots on albums.albumroot = albumroots.id LIMIT 3")
 #                "              join albumroots on albums.albumroot = albumroots.id")
     while True:
       digikam_image = cur.fetchone()
